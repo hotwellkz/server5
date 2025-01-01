@@ -19,7 +19,7 @@ const limiter = rateLimit({
 });
 
 const corsOptions = {
-  origin: '*', // Разрешаем запросы с любого источника в режиме no-cors
+  origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -27,11 +27,29 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
-app.use(helmet());
+// Отключаем некоторые заголовки helmet для работы в no-cors режиме
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 app.use(limiter);
+
+// Добавляем дополнительные CORS заголовки
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use('/api/code', codeRoutes);
 
