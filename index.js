@@ -1,48 +1,42 @@
-const express = require('express');
-const { Configuration, OpenAIApi } = require('openai');
-require('dotenv').config(); // Подключение .env для локальной разработки
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { logger } from './utils/logger.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { codeRoutes } from './routes/code.js';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Инициализация OpenAI
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY, // Переменная окружения для OpenAI API ключа
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100
 });
 
-const openai = new OpenAIApi(configuration);
+const corsOptions = {
+  origin: '*', // Разрешаем запросы с любого источника в режиме no-cors
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400,
+  optionsSuccessStatus: 200
+};
 
-// Middleware для обработки JSON-запросов
+app.use(helmet());
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
+app.use(limiter);
 
-// Маршрут для тестирования API
-app.get('/', (req, res) => {
-  res.send('Сервер работает!');
-});
+app.use('/api/code', codeRoutes);
 
-// Маршрут для генерации кода с помощью OpenAI
-app.post('/generate', async (req, res) => {
-  const { prompt } = req.body;
+app.use(errorHandler);
 
-  if (!prompt) {
-    return res.status(400).json({ error: 'Необходимо предоставить prompt' });
-  }
-
-  try {
-    const response = await openai.createCompletion({
-      model: 'text-davinci-003',
-      prompt,
-      max_tokens: 100,
-    });
-
-    res.json({ code: response.data.choices[0].text });
-  } catch (error) {
-    console.error('Ошибка при работе с OpenAI API:', error.message);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-});
-
-// Запуск сервера
 app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
