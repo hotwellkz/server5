@@ -20,12 +20,13 @@ const limiter = rateLimit({
 
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://sweet-llama-e0019a.netlify.app']
-    : ['http://localhost:8080'],
+    ? ['https://sweet-llama-e0019a.netlify.app', 'https://lavish-stillness-anthropicapikey.up.railway.app']
+    : ['http://localhost:8080', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400
+  maxAge: 86400,
+  optionsSuccessStatus: 200
 };
 
 app.use(helmet());
